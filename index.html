@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Verify Unlock Access</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <style>
+    body {
+      background: radial-gradient(circle, #000, #111);
+      color: #00ffcc;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 60px 20px;
+    }
+    h1 {
+      font-size: 30px;
+      margin-bottom: 30px;
+    }
+    button {
+      padding: 16px 36px;
+      font-size: 20px;
+      background: linear-gradient(45deg, #00ccff, #00ffcc);
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 15px #00ffcc;
+    }
+    #status {
+      margin-top: 30px;
+      font-size: 18px;
+      color: gold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tap to Unlock TiffyAI Wheel</h1>
+  <button onclick="verifyAccess()">Unlock</button>
+  <div id="status">Please connect your wallet to continue.</div>
+
+  <script>
+    const CLAIM_LINK = "https://tiffyai.github.io/Claim/";
+    const WHEEL_LINK = "https://tiffyai.github.io/Lucky-Wheel/";
+    const CONTRACT = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
+
+    const ABI = [
+      { "inputs": [{ "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" }
+    ];
+
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: { 97: "https://data-seed-prebsc-1-s1.binance.org:8545/" },
+          chainId: 97
+        }
+      }
+    };
+
+    const web3Modal = new window.Web3Modal.default({ cacheProvider: false, providerOptions });
+
+    async function verifyAccess() {
+      document.getElementById("status").innerText = "Connecting wallet...";
+      const instance = await web3Modal.connect();
+      const web3 = new Web3(instance);
+      const accounts = await web3.eth.getAccounts();
+      const user = accounts[0];
+      const contract = new web3.eth.Contract(ABI, CONTRACT);
+
+      document.getElementById("status").innerText = "Verifying claim status...";
+
+      const lastClaim = await contract.methods.lastClaimed(user).call();
+      const now = Math.floor(Date.now() / 1000);
+      const nextClaim = parseInt(lastClaim) + 86400;
+
+      if (now < nextClaim) {
+        // Already claimed
+        window.location.href = WHEEL_LINK;
+      } else {
+        const goClaim = confirm("Looks like you haven't claimed yet today. Want to go claim now?");
+        if (goClaim) window.location.href = CLAIM_LINK;
+      }
+    }
+  </script>
+</body>
+</html>
