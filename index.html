@@ -2,51 +2,80 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Verify Unlock Access</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TiffyAI Unlock Portal</title>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
   <style>
     body {
-      background: radial-gradient(circle, #000, #111);
-      color: #00ffcc;
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
       font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(145deg, #000000, #021327);
+      color: white;
       text-align: center;
-      padding: 60px 20px;
     }
-    h1 {
-      font-size: 30px;
-      margin-bottom: 30px;
+
+    img {
+      width: 160px;
+      margin-bottom: 25px;
+      filter: drop-shadow(0 0 10px #00ffccaa);
     }
+
     button {
-      padding: 16px 36px;
-      font-size: 20px;
-      background: linear-gradient(45deg, #00ccff, #00ffcc);
-      border: none;
-      border-radius: 10px;
+      font-size: 24px;
       font-weight: bold;
+      padding: 16px 40px;
+      background: linear-gradient(90deg, #00ffcc, #00ccff);
+      color: black;
+      border: none;
+      border-radius: 50px;
       cursor: pointer;
       box-shadow: 0 0 15px #00ffcc;
+      margin-top: 10px;
     }
+
     #status {
-      margin-top: 30px;
+      margin-top: 20px;
       font-size: 18px;
-      color: gold;
+      color: #ffd700;
+    }
+
+    .particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: radial-gradient(circle, #00ffcc, transparent);
+      border-radius: 50%;
+      animation: float 12s linear infinite;
+    }
+
+    @keyframes float {
+      from { transform: translateY(100vh) scale(0.5); opacity: 0; }
+      to   { transform: translateY(-10vh) scale(1.5); opacity: 1; }
     }
   </style>
 </head>
 <body>
-  <h1>Tap to Unlock TiffyAI Wheel</h1>
-  <button onclick="verifyAccess()">Unlock</button>
-  <div id="status">Please connect your wallet to continue.</div>
+
+  <img src="Key.png" alt="Unlock Key">
+  <h2>Verify Claim Access</h2>
+  <button id="unlockBtn">UNLOCK</button>
+  <div id="status">Connecting to wallet...</div>
 
   <script>
-    const CLAIM_LINK = "https://tiffyai.github.io/Claim/";
-    const WHEEL_LINK = "https://tiffyai.github.io/Lucky-Wheel/";
+    const CLAIM_URL = "https://tiffyai.github.io/Claim/";
+    const WHEEL_URL = "https://tiffyai.github.io/Lucky-Wheel/";
     const CONTRACT = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
 
     const ABI = [
-      { "inputs": [{ "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" }
+      { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
     ];
 
     const providerOptions = {
@@ -61,27 +90,50 @@
 
     const web3Modal = new window.Web3Modal.default({ cacheProvider: false, providerOptions });
 
-    async function verifyAccess() {
-      document.getElementById("status").innerText = "Connecting wallet...";
-      const instance = await web3Modal.connect();
-      const web3 = new Web3(instance);
-      const accounts = await web3.eth.getAccounts();
-      const user = accounts[0];
-      const contract = new web3.eth.Contract(ABI, CONTRACT);
+    let web3, contract, user;
 
-      document.getElementById("status").innerText = "Verifying claim status...";
+    async function connectAndVerify() {
+      try {
+        document.getElementById("status").innerText = "Connecting to wallet...";
+        const provider = await web3Modal.connect();
+        web3 = new Web3(provider);
 
-      const lastClaim = await contract.methods.lastClaimed(user).call();
-      const now = Math.floor(Date.now() / 1000);
-      const nextClaim = parseInt(lastClaim) + 86400;
+        const accounts = await web3.eth.getAccounts();
+        user = accounts[0];
+        contract = new web3.eth.Contract(ABI, CONTRACT);
 
-      if (now < nextClaim) {
-        // Already claimed
-        window.location.href = WHEEL_LINK;
-      } else {
-        const goClaim = confirm("Looks like you haven't claimed yet today. Want to go claim now?");
-        if (goClaim) window.location.href = CLAIM_LINK;
+        const lastClaimed = await contract.methods.lastClaimed(user).call();
+        const now = Math.floor(Date.now() / 1000);
+        const nextClaim = parseInt(lastClaimed) + 86400;
+
+        if (now < nextClaim) {
+          document.getElementById("status").innerText = "Redirecting to Lucky Wheel...";
+          setTimeout(() => window.location.href = WHEEL_URL, 2000);
+        } else {
+          document.getElementById("status").innerText = "Claim not found today...";
+          setTimeout(() => {
+            if (confirm("You haven't claimed today. Want to go claim now?")) {
+              window.location.href = CLAIM_URL;
+            }
+          }, 1500);
+        }
+      } catch (e) {
+        document.getElementById("status").innerText = "Connection failed.";
+        console.error(e);
       }
+    }
+
+    document.getElementById("unlockBtn").onclick = connectAndVerify;
+
+    // Add particles for extra magic
+    for (let i = 0; i < 25; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.animationDelay = (Math.random() * 10) + 's';
+      p.style.opacity = Math.random();
+      p.style.width = p.style.height = (Math.random() * 8 + 2) + 'px';
+      document.body.appendChild(p);
     }
   </script>
 </body>
