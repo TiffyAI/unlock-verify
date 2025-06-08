@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TiffyAI Unlock Portal</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(145deg, #000000, #021327);
+      color: white;
+      text-align: center;
+    }
+
+    img {
+      width: 160px;
+      margin-bottom: 25px;
+      filter: drop-shadow(0 0 10px #00ffccaa);
+    }
+
+    button {
+      font-size: 24px;
+      font-weight: bold;
+      padding: 16px 40px;
+      background: linear-gradient(90deg, #00ffcc, #00ccff);
+      color: black;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 15px #00ffcc;
+      margin-top: 10px;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #ffd700;
+    }
+
+    .particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: radial-gradient(circle, #00ffcc, transparent);
+      border-radius: 50%;
+      animation: float 12s linear infinite;
+    }
+
+    @keyframes float {
+      from { transform: translateY(100vh) scale(0.5); opacity: 0; }
+      to   { transform: translateY(-10vh) scale(1.5); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <img src="Key.png" alt="Unlock Key">
+  <h2>Verify Claim Access</h2>
+  <button id="unlockBtn">UNLOCK</button>
+  <div id="status">Connecting to wallet...</div>
+
+  <script>
+    const CLAIM_URL = "https://tiffyai.github.io/Claim/";
+    const WHEEL_URL = "https://tiffyai.github.io/Lucky-Wheel/";
+    const CONTRACT = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+
+    const ABI = [
+      { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
+    ];
+
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: { 56: "https://bsc-dataseed.binance.org/" }, // ✅ Mainnet RPC
+          chainId: 56 // ✅ Mainnet Chain ID
+        }
+      }
+    };
+
+    const web3Modal = new window.Web3Modal.default({ cacheProvider: false, providerOptions });
+
+    let web3, contract, user;
+
+    async function connectAndVerify() {
+      try {
+        document.getElementById("status").innerText = "Connecting to wallet...";
+        const provider = await web3Modal.connect();
+        web3 = new Web3(provider);
+
+        const accounts = await web3.eth.getAccounts();
+        user = accounts[0];
+        contract = new web3.eth.Contract(ABI, CONTRACT);
+
+        const lastClaimed = await contract.methods.lastClaimed(user).call();
+        const now = Math.floor(Date.now() / 1000);
+        const nextClaim = parseInt(lastClaimed) + 86400;
+
+        if (now < nextClaim) {
+          document.getElementById("status").innerText = "Redirecting to Lucky Wheel...";
+          setTimeout(() => window.location.href = WHEEL_URL, 2000);
+        } else {
+          document.getElementById("status").innerText = "Claim not found today...";
+          setTimeout(() => {
+            if (confirm("You haven't claimed today. Want to go claim now?")) {
+              window.location.href = CLAIM_URL;
+            }
+          }, 1500);
+        }
+      } catch (e) {
+        document.getElementById("status").innerText = "Connection failed.";
+        console.error(e);
+      }
+    }
+
+    document.getElementById("unlockBtn").onclick = connectAndVerify;
+
+    // Add particles for extra magic
+    for (let i = 0; i < 25; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.animationDelay = (Math.random() * 10) + 's';
+      p.style.opacity = Math.random();
+      p.style.width = p.style.height = (Math.random() * 8 + 2) + 'px';
+      document.body.appendChild(p);
+    }
+  </script>
+</body>
+</html>
